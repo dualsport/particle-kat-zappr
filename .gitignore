@@ -1,0 +1,25 @@
+# VS Code files
+.vscode/
+
+# Target files
+target/*
+
+# Firmware builds
+photon_firmware*.bin
+
+# Object files
+*.o
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug folder
+Debug/*
