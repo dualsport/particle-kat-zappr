@@ -16,7 +16,7 @@ void setup() {
   Particle.function("pan", pan);
   Particle.function("tilt", tilt);
   Particle.function("exercise", exercise);
-  Particle.function("interpolate", interpolate);
+  Particle.function("PanAndTilt", panAndTilt);
   Particle.function("speed", setSpeed);
 
   panServo.attach(D3);
@@ -40,7 +40,7 @@ int pan(String pan) {
   int panStart = panServo.read();
   int panEnd = pan.toInt();
   int z = (panEnd >= panStart) ? 1 : -1;
-  for (int i=panStart + z; i != panEnd; i += z) {
+  for (int i=panStart + z; i != panEnd + z; i += z) {
     panServo.write(i);
     delay(servoDelay);
   }
@@ -48,9 +48,9 @@ int pan(String pan) {
 }
 
 int tilt(String tilt) {
-  int setPoint = tilt.toInt();
-  tiltServo.write(setPoint);
-  return setPoint;
+  int tiltEnd = tilt.toInt();
+  int panEnd = panServo.read();
+  return interpolate(panEnd, tiltEnd);
 }
 
 int exercise(String go) {
@@ -70,38 +70,42 @@ int exercise(String go) {
   }
 }
 
-int interpolate(String endpoint) {
-  int pEnd = endpoint.substring(0, endpoint.indexOf(",")).toInt();
-  int tEnd = endpoint.substring(endpoint.indexOf(",") + 1).toInt();
-  int pStart = panServo.read();
-  int tStart = tiltServo.read();
+int panAndTilt(String endpoint){
+  int panEnd = endpoint.substring(0, endpoint.indexOf(",")).toInt();
+  int tiltEnd = endpoint.substring(endpoint.indexOf(",") + 1).toInt();
+  return interpolate(panEnd, tiltEnd);
+}
+
+int interpolate(int panEnd, int tiltEnd) {
+  int panStart = panServo.read();
+  int tiltStart = tiltServo.read();
   float ptRatio = 0;
   
   // Pan only move
-  if (abs(pStart - pEnd) > 0 && abs(tStart - tEnd) == 0) {
-    int z = (pEnd >= pStart) ? 1 : -1;
-    for (int i=pStart + z; i != pEnd; i += z) {
+  if (abs(panStart - panEnd) > 0 && abs(tiltStart - tiltEnd) == 0) {
+    int z = (panEnd >= panStart) ? 1 : -1;
+    for (int i=panStart + z; i != panEnd + z; i += z) {
       panServo.write(i);
       delay(servoDelay);
     }
   }
   // Tilt only move
-  if (abs(tStart - tEnd) > 0 && abs(pStart - pEnd) == 0) {
-    int z = (tEnd >= tStart) ? 1 : -1;
-    for (int i=tStart + z; i != tEnd; i += z) {
+  if (abs(tiltStart - tiltEnd) > 0 && abs(panStart - panEnd) == 0) {
+    int z = (tiltEnd >= tiltStart) ? 1 : -1;
+    for (int i=tiltStart + z; i != tiltEnd + z; i += z) {
       tiltServo.write(i);
       delay(servoDelay);
     }
   }
   // Pan & Tilt move
-  if (abs(pStart - pEnd) > 0 && abs(tStart - tEnd) > 0) {
-    ptRatio = ((float)abs(pStart - pEnd) / (float)abs(tStart - tEnd));
+  if (abs(panStart - panEnd) > 0 && abs(tiltStart - tiltEnd) > 0) {
+    ptRatio = ((float)abs(panStart - panEnd) / (float)abs(tiltStart - tiltEnd));
     // pan move larger than or same as tilt
     if (ptRatio >= 1) {
-      int pz = (pEnd >= pStart) ? 1 : -1;
-      float tz = ((tEnd >= tStart) ? 1 : -1) / ptRatio;
-      float tNext = tStart + tz;
-      for (int i=pStart + pz; i != pEnd; i += pz) {
+      int pz = (panEnd >= panStart) ? 1 : -1;
+      float tz = ((tiltEnd >= tiltStart) ? 1 : -1) / ptRatio;
+      float tNext = tiltStart + tz;
+      for (int i=panStart + pz; i != panEnd + pz; i += pz) {
         panServo.write(i);
         tiltServo.write(int(tNext));
         tNext += tz;
@@ -110,10 +114,10 @@ int interpolate(String endpoint) {
     }
     // tilt move larger than pan
     if (ptRatio < 1) {
-      int tz = (tEnd >= tStart) ? 1 : -1;
-      float pz = ((pEnd >= pStart) ? 1 : -1) * ptRatio;
-      float pNext = pStart + pz;
-      for (int i=tStart + tz; i != tEnd; i += tz) {
+      int tz = (tiltEnd >= tiltStart) ? 1 : -1;
+      float pz = ((panEnd >= panStart) ? 1 : -1) * ptRatio;
+      float pNext = panStart + pz;
+      for (int i=tiltStart + tz; i != tiltEnd + tz; i += tz) {
         tiltServo.write(i);
         panServo.write(int(pNext));
         pNext += pz;
@@ -123,7 +127,7 @@ int interpolate(String endpoint) {
   }
 
 
-  Particle.publish("info", String::format("pStart=%d, pEnd=%d, tStart=%d, tEnd=%d, ptRatio=%4f", pStart, pEnd, tStart, tEnd, ptRatio));
+  Particle.publish("info", String::format("panStart=%d, panEnd=%d, tiltStart=%d, tiltEnd=%d, ptRatio=%4f", panStart, panEnd, tiltStart, tiltEnd, ptRatio));
   return 1;
 }
 
