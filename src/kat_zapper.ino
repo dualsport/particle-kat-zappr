@@ -34,7 +34,7 @@ int zones[12][4] =
   {70,40,120,95}
 };
 
-bool scanningActive = true;
+bool scanningActive = false;
 
 
 void setup() {
@@ -58,7 +58,18 @@ void setup() {
 
 
 void loop() {
-  // The core of your code will likely live here.
+  if (scanningActive == true) {
+    int cycles = random(1,50);
+    int zoneSel = random(0,11);
+    for (int i=0;i<cycles;i++) {
+      int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
+      int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
+      linear_interpolate(panEnd, tiltEnd);
+      if (scanningActive == false) {
+        return;
+      }
+    }
+  }
 
 }
 
