@@ -11,7 +11,15 @@ Servo tiltServo;
 int pos = 0;    // variable to store the servo position
 int servoDelay = 15;
 
-// setup() runs once, when the device is first turned on.
+int panMin = 10;   // minimum pan degrees
+int panMax = 180;  // maximum pan degrees
+int tiltMin = 90;  // minimum tilt degrees
+int tiltMax = 180; // maximum tilt degrees
+
+// scan zones
+
+
+
 void setup() {
   Particle.function("pan", pan);
   Particle.function("tilt", tilt);
@@ -30,27 +38,22 @@ void setup() {
   delay(500); 
 }
 
-// loop() runs over and over again, as quickly as it can execute.
+
 void loop() {
   // The core of your code will likely live here.
 
 }
 
 int pan(String pan) {
-  int panStart = panServo.read();
   int panEnd = pan.toInt();
-  int z = (panEnd >= panStart) ? 1 : -1;
-  for (int i=panStart + z; i != panEnd + z; i += z) {
-    panServo.write(i);
-    delay(servoDelay);
-  }
-  return panEnd;
+  int tiltEnd = tiltServo.read();
+  return linear_interpolate(panEnd, tiltEnd);
 }
 
 int tilt(String tilt) {
   int tiltEnd = tilt.toInt();
   int panEnd = panServo.read();
-  return interpolate(panEnd, tiltEnd);
+  return linear_interpolate(panEnd, tiltEnd);
 }
 
 int exercise(String go) {
@@ -73,12 +76,19 @@ int exercise(String go) {
 int panAndTilt(String endpoint){
   int panEnd = endpoint.substring(0, endpoint.indexOf(",")).toInt();
   int tiltEnd = endpoint.substring(endpoint.indexOf(",") + 1).toInt();
-  return interpolate(panEnd, tiltEnd);
+  return linear_interpolate(panEnd, tiltEnd);
 }
 
-int interpolate(int panEnd, int tiltEnd) {
+int linear_interpolate(int panEnd, int tiltEnd) {
+  // keeps moves within limits
+  panEnd = min(panEnd, panMax);
+  panEnd = max(panEnd, panMin);
+  tiltEnd = min(tiltEnd, tiltMax);
+  tiltEnd = max(tiltEnd, tiltMin);
+  // get current positions
   int panStart = panServo.read();
   int tiltStart = tiltServo.read();
+
   float ptRatio = 0;
   
   // Pan only move
@@ -100,6 +110,7 @@ int interpolate(int panEnd, int tiltEnd) {
   // Pan & Tilt move
   if (abs(panStart - panEnd) > 0 && abs(tiltStart - tiltEnd) > 0) {
     ptRatio = ((float)abs(panStart - panEnd) / (float)abs(tiltStart - tiltEnd));
+
     // pan move larger than or same as tilt
     if (ptRatio >= 1) {
       int pz = (panEnd >= panStart) ? 1 : -1;
