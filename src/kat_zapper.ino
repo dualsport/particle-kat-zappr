@@ -34,9 +34,11 @@ int zones[12][4] =
   {70,40,120,95}
 };
 
+bool scanningActive = true;
 
 
 void setup() {
+  Particle.function("ActivateLaserScan", activateScan);
   Particle.function("pan", pan);
   Particle.function("tilt", tilt);
   Particle.function("exercise", exercise);
@@ -168,4 +170,15 @@ int setSpeed(String speed) {
     Particle.publish("error", "Speed setting must be in the range of 1 - 10.");
   }
   return servoDelay;
+}
+
+int activateScan(String command) {
+  if (command == "on") {
+    scanningActive = true;
+    return 1;
+  }
+  else {
+    scanningActive = false;
+    return 0;
+  }
 }
