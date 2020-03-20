@@ -35,6 +35,8 @@ int zones[12][4] =
 };
 
 bool scanningActive = false;
+int scanTime = .5 * 60 * 1000;
+unsigned long scanStart;
 
 
 void setup() {
@@ -66,6 +68,10 @@ void loop() {
       int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
       linear_interpolate(panEnd, tiltEnd);
       if (scanningActive == false) {
+        return;
+      }
+      if(millis() - scanStart >= scanTime) {
+        scanningActive = false;
         return;
       }
     }
@@ -186,6 +192,7 @@ int setSpeed(String speed) {
 int activateScan(String command) {
   if (command == "on") {
     scanningActive = true;
+    scanStart = millis();
     return 1;
   }
   else {
