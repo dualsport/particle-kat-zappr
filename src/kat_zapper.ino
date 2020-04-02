@@ -5,11 +5,15 @@
  * Date:
  */
 
+int panPin = D2;
+int tiltPin = D3;
+int laserPin = D1;
+
 Servo panServo;  // create servo object to control a servo
 Servo tiltServo;
 
 int pos = 0;    // variable to store the servo position
-int servoDelay = 15;
+int servoDelay = 16;
 
 int panMin = 10;   // minimum pan degrees
 int panMax = 180;  // maximum pan degrees
@@ -35,7 +39,7 @@ int zones[12][4] =
 };
 
 bool scanningActive = false;
-int scanTime = .5 * 60 * 1000;
+int scanTime = 5 * 60 * 1000;
 unsigned long scanStart;
 
 
@@ -46,32 +50,37 @@ void setup() {
   Particle.function("exercise", exercise);
   Particle.function("PanAndTilt", panAndTilt);
   Particle.function("speed", setSpeed);
+  Particle.function("Laser", laser);
 
-  panServo.attach(D3);
-  tiltServo.attach(D2);
+  panServo.attach(panPin);
+  tiltServo.attach(tiltPin);
+  pinMode(laserPin, OUTPUT);
+  digitalWrite(laserPin, LOW);
 
-  panServo.write(0);  // tell servo to go to a particular angle
-  delay(500);
-  
-  panServo.write(100);  
+  panServo.write(0);  
   tiltServo.write(135);            
+  delay(500); 
+  panServo.write(100);  
+  tiltServo.write(90);            
   delay(500); 
 }
 
 
 void loop() {
   if (scanningActive == true) {
-    int cycles = random(1,50);
+    int cycles = random(5,50);
     int zoneSel = random(0,11);
     for (int i=0;i<cycles;i++) {
       int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
       int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
       linear_interpolate(panEnd, tiltEnd);
       if (scanningActive == false) {
+        digitalWrite(laserPin, LOW);
         return;
       }
       if(millis() - scanStart >= scanTime) {
         scanningActive = false;
+        digitalWrite(laserPin, LOW);
         return;
       }
     }
@@ -171,9 +180,7 @@ int linear_interpolate(int panEnd, int tiltEnd) {
       }
     }
   }
-
-
-  Particle.publish("info", String::format("panStart=%d, panEnd=%d, tiltStart=%d, tiltEnd=%d, ptRatio=%4f", panStart, panEnd, tiltStart, tiltEnd, ptRatio));
+  // Particle.publish("info", String::format("panStart=%d, panEnd=%d, tiltStart=%d, tiltEnd=%d, ptRatio=%4f", panStart, panEnd, tiltStart, tiltEnd, ptRatio));
   return 1;
 }
 
@@ -193,10 +200,22 @@ int activateScan(String command) {
   if (command == "on") {
     scanningActive = true;
     scanStart = millis();
+    digitalWrite(laserPin, HIGH);
     return 1;
   }
   else {
     scanningActive = false;
+    return 0;
+  }
+}
+
+int laser(String command) {
+  if (command == "on") {
+    digitalWrite(laserPin, HIGH);
+    return 1;
+  }
+  else {
+    digitalWrite(laserPin, LOW);
     return 0;
   }
 }
