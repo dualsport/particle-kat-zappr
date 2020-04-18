@@ -13,7 +13,7 @@ Servo panServo;  // create servo object to control a servo
 Servo tiltServo;
 
 int pos = 0;    // variable to store the servo position
-int servoDelay = 16;
+int servoDelay = 48;
 
 int panMin = 10;   // minimum pan degrees
 int panMax = 180;  // maximum pan degrees
