@@ -8,6 +8,7 @@
 int panPin = D2;
 int tiltPin = D3;
 int laserPin = D1;
+int button = D5;
 
 Servo panServo;  // create servo object to control a servo
 Servo tiltServo;
@@ -68,7 +69,8 @@ int zones[24][4] =
 
 bool scanningActive = false;
 int scanTime = 5 * 60 * 1000;
-unsigned long scanStart;
+unsigned long scanEnd;
+unsigned long lastPress = millis();
 
 
 void setup() {
@@ -84,6 +86,9 @@ void setup() {
   tiltServo.attach(tiltPin);
   pinMode(laserPin, OUTPUT);
   digitalWrite(laserPin, LOW);
+
+  pinMode(button, INPUT_PULLUP);
+  attachInterrupt(button, button_press, RISING);
 
   panServo.write(0);  
   tiltServo.write(135);            
@@ -106,7 +111,7 @@ void loop() {
         digitalWrite(laserPin, LOW);
         return;
       }
-      if(millis() - scanStart >= scanTime) {
+      if(millis() > scanEnd) {
         scanningActive = false;
         digitalWrite(laserPin, LOW);
         return;
@@ -227,7 +232,7 @@ int setSpeed(String speed) {
 int activateScan(String command) {
   if (command == "on") {
     scanningActive = true;
-    scanStart = millis();
+    scanEnd = millis() + scanTime;
     digitalWrite(laserPin, HIGH);
     return 1;
   }
@@ -245,5 +250,20 @@ int laser(String command) {
   else {
     digitalWrite(laserPin, LOW);
     return 0;
+  }
+}
+
+void button_press() {
+  // debounce button
+  if (millis() - lastPress > 750) {
+    lastPress = millis();
+    if (scanningActive == true) {
+      scanEnd += scanTime;
+    }
+    else {
+      scanningActive = true;
+      scanEnd = millis() + scanTime;
+      digitalWrite(laserPin, HIGH);
+    }
   }
 }
