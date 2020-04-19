@@ -77,7 +77,6 @@ void setup() {
   Particle.function("ActivateLaserScan", activateScan);
   Particle.function("pan", pan);
   Particle.function("tilt", tilt);
-  Particle.function("exercise", exercise);
   Particle.function("PanAndTilt", panAndTilt);
   Particle.function("speed", setSpeed);
   Particle.function("Laser", laser);
@@ -90,35 +89,33 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   attachInterrupt(button, button_press, RISING);
 
-  panServo.write(0);  
-  tiltServo.write(135);            
-  delay(500); 
-  panServo.write(100);  
-  tiltServo.write(90);            
-  delay(500); 
+  panServo.write(panMax);  
+  tiltServo.write(tiltMax);            
+  delay(750); 
+  panServo.write(panMin);  
+  tiltServo.write(tiltMin);            
+  delay(750); 
+  panServo.write((panMin + panMax) / 2);  
+  tiltServo.write((tiltMin + tiltMax) / 2); 
+  delay(1000);
 }
 
 
 void loop() {
-  if (scanningActive == true) {
+  while (scanningActive == true) {
+    digitalWrite(laserPin, HIGH);
     int cycles = random(5,50);
     int zoneSel = random(16,23);
     for (int i=0;i<cycles;i++) {
       int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
       int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
       linear_interpolate(panEnd, tiltEnd);
-      if (scanningActive == false) {
-        digitalWrite(laserPin, LOW);
-        return;
-      }
-      if(millis() > scanEnd) {
-        scanningActive = false;
+      if (millis() > scanEnd || scanningActive == false) {
         digitalWrite(laserPin, LOW);
         return;
       }
     }
   }
-
 }
 
 int pan(String pan) {
@@ -131,23 +128,6 @@ int tilt(String tilt) {
   int tiltEnd = tilt.toInt();
   int panEnd = panServo.read();
   return linear_interpolate(panEnd, tiltEnd);
-}
-
-int exercise(String go) {
-  if (go == "go") {
-    panServo.write(0);
-    tiltServo.write(90);
-    delay(1000);
-    panServo.write(180);
-    tiltServo.write(180);
-    delay(1000);
-    panServo.write(100);
-    tiltServo.write(135);
-    return 1;
-  }
-  else {
-    return 0;
-  }
 }
 
 int panAndTilt(String endpoint){
@@ -233,7 +213,6 @@ int activateScan(String command) {
   if (command == "on") {
     scanningActive = true;
     scanEnd = millis() + scanTime;
-    digitalWrite(laserPin, HIGH);
     return 1;
   }
   else {
@@ -263,7 +242,6 @@ void button_press() {
     else {
       scanningActive = true;
       scanEnd = millis() + scanTime;
-      digitalWrite(laserPin, HIGH);
     }
   }
 }
