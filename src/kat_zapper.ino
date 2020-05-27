@@ -22,25 +22,10 @@ int tiltMin = 90;  // minimum tilt degrees
 int tiltMax = 180; // maximum tilt degrees
 
 // scan zones
-// 12 zones - panleft, panright, tiltbottom, tilttop
-// int zones[12][4] =
-// {
-//   {160,130,170,145},
-//   {130,100,170,145},
-//   {100,70,170,145},
-//   {70,40,170,145},
-//   {160,130,145,120},
-//   {130,100,145,120},
-//   {100,70,145,120},
-//   {70,40,145,120},
-//   {160,130,120,95},
-//   {130,100,120,95},
-//   {100,70,120,95},
-//   {70,40,120,95}
-// };
-
+// 24 zones - panleft, panright, tiltbottom, tilttop
 int zones[24][4] =
 {
+  // near tilt
   {160,145,170,145},
   {145,130,170,145},
   {130,115,170,145},
@@ -49,6 +34,7 @@ int zones[24][4] =
   {85,70,170,145},
   {70,55,170,145},
   {55,40,170,145},
+  // middle tilt
   {160,145,145,120},
   {145,130,145,120},
   {130,115,145,120},
@@ -57,6 +43,7 @@ int zones[24][4] =
   {85,70,145,120},
   {70,55,145,120},
   {55,40,145,120},
+  // far tilt
   {160,145,120,95},
   {145,130,120,95},
   {130,115,120,95},
@@ -66,6 +53,10 @@ int zones[24][4] =
   {70,55,120,95},
   {55,40,120,95},
 };
+
+// Set range of zones to cover (0 to 23)
+int first_zone = 0;
+int last_zone = 15;
 
 bool scanningActive = false;
 int scanTime = 5 * 60 * 1000;
@@ -105,8 +96,8 @@ void setup() {
 void loop() {
   while (scanningActive == true) {
     digitalWrite(laserPin, HIGH);
-    int cycles = random(5,50);
-    int zoneSel = random(16,23);
+    int cycles = random(5,25);
+    int zoneSel = random(first_zone,last_zone);
     for (int i=0;i<cycles;i++) {
       int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
       int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
