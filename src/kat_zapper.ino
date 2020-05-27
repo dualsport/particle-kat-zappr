@@ -71,6 +71,7 @@ bool scanningActive = false;
 int scanTime = 5 * 60 * 1000;
 unsigned long scanEnd;
 unsigned long lastPress = millis();
+unsigned long lastPub;
 
 
 void setup() {
@@ -111,9 +112,15 @@ void loop() {
       int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
       linear_interpolate(panEnd, tiltEnd);
       if (millis() > scanEnd || scanningActive == false) {
+        scanningActive = false;
         digitalWrite(laserPin, LOW);
         return;
       }
+    }
+    if (millis() - lastPub > 60000) {
+      float timeRemain = (scanEnd - millis()) / (float)60000;
+      Particle.publish("info", String::format("Minutes remaining = %4f", timeRemain));
+      lastPub += 60000;
     }
   }
 }
@@ -213,6 +220,7 @@ int activateScan(String command) {
   if (command == "on") {
     scanningActive = true;
     scanEnd = millis() + scanTime;
+    lastPub = millis();
     return 1;
   }
   else {
@@ -242,6 +250,7 @@ void button_press() {
     else {
       scanningActive = true;
       scanEnd = millis() + scanTime;
+      lastPub = millis();
     }
   }
 }
