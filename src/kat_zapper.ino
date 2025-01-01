@@ -1,3 +1,5 @@
+#include "MQTT.h"
+
 /*
  * Project kat_zapper
  * Description:
@@ -64,6 +66,30 @@ unsigned long scanEnd;
 unsigned long lastPress = millis();
 unsigned long lastPub;
 
+void callback(char* topic, byte* payload, unsigned int length);
+
+// MQTT Setup
+const uint8_t mqtt_server[] = { 192,168,88,11};
+const char mqtt_user[] = "mqtt_user";
+const char mqtt_password[] = "iaea123:)";
+MQTT client(mqtt_server, 1883, callback);
+
+// recieve message
+void callback(char* topic, byte* payload, unsigned int length) {
+    char p[length + 1];
+    memcpy(p, payload, length);
+    p[length] = NULL;
+
+    if (!strcmp(p, "ON")) {
+      scanningActive = true;
+      scanEnd = millis() + scanTime;
+      lastPub = millis();
+    }
+    else {
+      scanningActive = false;
+    }
+}
+
 
 void setup() {
   Particle.function("ActivateLaserScan", activateScan);
@@ -80,6 +106,16 @@ void setup() {
 
   pinMode(button, INPUT_PULLUP);
   attachInterrupt(button, button_press, RISING);
+
+  // connect to the server
+  client.connect("KatZapper", mqtt_user, mqtt_password);
+
+  // publish/subscribe
+  if (client.isConnected()) {
+      client.publish("KatZapper/message","started");
+      client.subscribe("KatZapper/command");
+  }
+
 
   panServo.write(panMax);  
   tiltServo.write(tiltMax);            
