@@ -1,4 +1,4 @@
-#include "MQTT.h"
+#include <MQTT.h>
 
 /*
  * Project kat_zapper
@@ -62,6 +62,7 @@ int last_zone = 15;
 
 bool scanningActive = false;
 int scanTime = 5 * 60 * 1000;
+//int scanTime = 100000;
 unsigned long scanEnd;
 unsigned long lastPress = millis();
 unsigned long lastPub;
@@ -72,7 +73,7 @@ void callback(char* topic, byte* payload, unsigned int length);
 const uint8_t mqtt_server[] = { 192,168,88,11};
 const char mqtt_user[] = "mqtt_user";
 const char mqtt_password[] = "iaea123:)";
-MQTT client(mqtt_server, 1883, callback);
+MQTT client(mqtt_server, 1883, 256, 120, callback);
 
 // recieve message
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -84,8 +85,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       scanningActive = true;
       scanEnd = millis() + scanTime;
       lastPub = millis();
+      client.publish("KatZapper/message","Received ON command");
     }
-    else {
+    else if (!strcmp(p, "OFF")) {
+      client.publish("KatZapper/message","Received OFF command");
       scanningActive = false;
     }
 }
@@ -130,7 +133,11 @@ void setup() {
 
 
 void loop() {
-  while (scanningActive == true) {
+  if (client.isConnected()) {
+    client.loop();
+  }
+
+  if (scanningActive == true) {
     digitalWrite(laserPin, HIGH);
     int cycles = random(5,25);
     int zoneSel = random(first_zone,last_zone);
@@ -141,12 +148,12 @@ void loop() {
       if (millis() > scanEnd || scanningActive == false) {
         scanningActive = false;
         digitalWrite(laserPin, LOW);
-        return;
       }
     }
     if (millis() - lastPub > 60000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
-      Particle.publish("info", String::format("Minutes remaining = %4f", timeRemain));
+      Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
+      client.publish("KatZapper/message", String::format("Minutes remaining = %4.1f", timeRemain));
       lastPub += 60000;
     }
   }
