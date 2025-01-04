@@ -1,4 +1,5 @@
 #include <MQTT.h>
+#include <ArduinoJson.h>
 
 /*
  * Project kat_zapper
