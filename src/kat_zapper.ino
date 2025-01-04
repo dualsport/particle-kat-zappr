@@ -65,7 +65,7 @@ int scanTime = 5 * 60 * 1000;
 //int scanTime = 100000;
 unsigned long scanEnd;
 unsigned long lastPress = millis();
-unsigned long lastPub;
+unsigned long lastPub = millis();
 
 void callback(char* topic, byte* payload, unsigned int length);
 
@@ -154,8 +154,14 @@ void loop() {
     if (millis() - lastPub > 60000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
       Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
-      client.publish("KatZapper/message", String::format("Minutes remaining = %4.1f", timeRemain));
+      client.publish("KatZapper/message", String::format("{\"status\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
       lastPub += 60000;
+    }
+  }
+  else {
+    if (millis() - lastPub > 5 * 60000) {
+      client.publish("KatZapper/message", "{\"status\":\"OFF\",\"time_remain\":0}");
+      lastPub += 5 * 60000;
     }
   }
 }
