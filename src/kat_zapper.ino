@@ -148,6 +148,7 @@ void loop() {
       if (millis() > scanEnd || scanningActive == false) {
         scanningActive = false;
         digitalWrite(laserPin, LOW);
+        return;
       }
     }
     if (millis() - lastPub > 60000) {
