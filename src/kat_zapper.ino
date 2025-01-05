@@ -76,19 +76,37 @@ const char mqtt_user[] = "mqtt_user";
 const char mqtt_password[] = "iaea123:)";
 MQTT client(mqtt_server, 1883, 256, 120, callback);
 
+
 // recieve message
 void callback(char* topic, byte* payload, unsigned int length) {
     char p[length + 1];
     memcpy(p, payload, length);
     p[length] = NULL;
 
-    if (!strcmp(p, "ON")) {
+    // client.publish("KatZapper/message", p);
+
+    JsonDocument doc;
+    deserializeJson(doc, p);
+    const char* state = doc["state"];
+    int duration = doc["duration"];
+    // char durationStr[16];
+    // sprintf(durationStr, "%.d", duration);
+    // client.publish("KatZapper/message", state);
+    // client.publish("KatZapper/message", durationStr);
+
+    if (!strcmp(state, "ON") && duration > 0) {
       scanningActive = true;
-      scanEnd = millis() + scanTime;
-      lastPub = millis();
+      if (scanningActive == true) {
+        scanEnd += duration  * 60 * 1000;
+      }
+      else {
+        scanningActive = true;
+        scanEnd = millis() + scanTime;
+        lastPub = millis();
+      }
       client.publish("KatZapper/message","Received ON command");
     }
-    else if (!strcmp(p, "OFF")) {
+    else if (!strcmp(state, "OFF")) {
       client.publish("KatZapper/message","Received OFF command");
       scanningActive = false;
     }
@@ -117,7 +135,7 @@ void setup() {
   // publish/subscribe
   if (client.isConnected()) {
       client.publish("KatZapper/message","started");
-      client.subscribe("KatZapper/command");
+      client.subscribe("KatZapper/set");
   }
 
 
@@ -155,13 +173,13 @@ void loop() {
     if (millis() - lastPub > 60000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
       Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
-      client.publish("KatZapper/message", String::format("{\"status\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
+      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
       lastPub += 60000;
     }
   }
   else {
     if (millis() - lastPub > 5 * 60000) {
-      client.publish("KatZapper/message", "{\"status\":\"OFF\",\"time_remain\":0}");
+      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
       lastPub += 5 * 60000;
     }
   }
@@ -284,7 +302,7 @@ int laser(String command) {
 
 void button_press() {
   // debounce button
-  if (millis() - lastPress > 750) {
+  if (millis() - lastPress > 500) {
     lastPress = millis();
     if (scanningActive == true) {
       scanEnd += scanTime;
