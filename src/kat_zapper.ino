@@ -170,17 +170,17 @@ void loop() {
         return;
       }
     }
-    if (millis() - lastPub > 60000) {
+    if (millis() - lastPub > 30000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
       Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
       client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
-      lastPub += 60000;
+      lastPub += 30000;
     }
   }
   else {
-    if (millis() - lastPub > 5 * 60000) {
+    if (millis() - lastPub > 30000) {
       client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
-      lastPub += 5 * 60000;
+      lastPub += 30000;
     }
   }
 }
