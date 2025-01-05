@@ -95,19 +95,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     // client.publish("KatZapper/message", durationStr);
 
     if (!strcmp(state, "ON") && duration > 0) {
-      scanningActive = true;
       if (scanningActive == true) {
         scanEnd += duration  * 60 * 1000;
       }
       else {
         scanningActive = true;
-        scanEnd = millis() + scanTime;
+        scanEnd = millis() + duration  * 60 * 1000;
         lastPub = millis();
       }
-      client.publish("KatZapper/message","Received ON command");
+      float timeRemain = (scanEnd - millis()) / (float)60000;
+      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
     }
     else if (!strcmp(state, "OFF")) {
-      client.publish("KatZapper/message","Received OFF command");
+      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
       scanningActive = false;
     }
 }
