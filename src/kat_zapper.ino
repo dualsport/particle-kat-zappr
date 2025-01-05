@@ -167,20 +167,21 @@ void loop() {
       if (millis() > scanEnd || scanningActive == false) {
         scanningActive = false;
         digitalWrite(laserPin, LOW);
+        lastPub = millis() - 60000;
         return;
       }
     }
-    if (millis() - lastPub > 30000) {
+    if (millis() - lastPub > 15000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
       Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
       client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
-      lastPub += 30000;
+      lastPub += 15000;
     }
   }
   else {
-    if (millis() - lastPub > 30000) {
+    if (millis() - lastPub > 60000) {
       client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
-      lastPub += 30000;
+      lastPub += 60000;
     }
   }
 }
