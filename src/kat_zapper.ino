@@ -134,8 +134,12 @@ void setup() {
 
   // publish/subscribe
   if (client.isConnected()) {
-      client.publish("KatZapper/message","started");
+      client.publish("KatZapper/message","MQTT Connected");
       client.subscribe("KatZapper/set");
+      Particle.publish("MQTT Connection Status", "Connected", PRIVATE);
+  }
+  else {
+      Particle.publish("MQTT Connection Status", "Not Connected", PRIVATE);
   }
 
 
@@ -173,7 +177,6 @@ void loop() {
     }
     if (millis() - lastPub > 15000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
-      Particle.publish("info", String::format("Minutes remaining = %4.1f", timeRemain));
       client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
       lastPub += 15000;
     }
