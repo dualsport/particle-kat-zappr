@@ -1,3 +1,6 @@
+#include <MQTT.h>
+#include <ArduinoJson.h>
+
 /*
  * Project kat_zapper
  * Description:
@@ -26,14 +29,14 @@ int tiltMax = 180; // maximum tilt degrees
 int zones[24][4] =
 {
   // near tilt
-  {160,145,170,145},
-  {145,130,170,145},
-  {130,115,170,145},
-  {115,100,170,145},
-  {100,85,170,145},
-  {85,70,170,145},
-  {70,55,170,145},
-  {55,40,170,145},
+  {160,145,165,140},
+  {145,130,165,140},
+  {130,115,165,140},
+  {115,100,165,140},
+  {100,85,165,140},
+  {85,70,165,140},
+  {70,55,165,140},
+  {55,40,165,140},
   // middle tilt
   {160,145,145,120},
   {145,130,145,120},
@@ -44,25 +47,70 @@ int zones[24][4] =
   {70,55,145,120},
   {55,40,145,120},
   // far tilt
-  {160,145,120,95},
-  {145,130,120,95},
-  {130,115,120,95},
-  {115,100,120,95},
-  {100,85,120,95},
-  {85,70,120,95},
-  {70,55,120,95},
-  {55,40,120,95},
+  {160,145,125,110},
+  {145,130,125,110},
+  {130,115,125,110},
+  {115,100,125,110},
+  {100,85,125,110},
+  {85,70,125,110},
+  {70,55,125,110},
+  {55,40,125,110},
 };
 
 // Set range of zones to cover (0 to 23)
 int first_zone = 0;
-int last_zone = 15;
+int last_zone = 23;
 
 bool scanningActive = false;
 int scanTime = 5 * 60 * 1000;
+//int scanTime = 100000;
 unsigned long scanEnd;
 unsigned long lastPress = millis();
-unsigned long lastPub;
+unsigned long lastPub = millis();
+
+void callback(char* topic, byte* payload, unsigned int length);
+
+// MQTT Setup
+const uint8_t mqtt_server[] = { 192,168,88,11};
+const char mqtt_user[] = "mqtt_user";
+const char mqtt_password[] = "iaea123:)";
+MQTT client(mqtt_server, 1883, 256, 120, callback);
+
+
+// recieve message
+void callback(char* topic, byte* payload, unsigned int length) {
+    char p[length + 1];
+    memcpy(p, payload, length);
+    p[length] = NULL;
+
+    // client.publish("KatZapper/message", p);
+
+    JsonDocument doc;
+    deserializeJson(doc, p);
+    const char* state = doc["state"];
+    int duration = doc["duration"];
+    // char durationStr[16];
+    // sprintf(durationStr, "%.d", duration);
+    // client.publish("KatZapper/message", state);
+    // client.publish("KatZapper/message", durationStr);
+
+    if (!strcmp(state, "ON") && duration > 0) {
+      if (scanningActive == true) {
+        scanEnd += duration  * 60 * 1000;
+      }
+      else {
+        scanningActive = true;
+        scanEnd = millis() + duration  * 60 * 1000;
+        lastPub = millis();
+      }
+      float timeRemain = (scanEnd - millis()) / (float)60000;
+      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
+    }
+    else if (!strcmp(state, "OFF")) {
+      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
+      scanningActive = false;
+    }
+}
 
 
 void setup() {
@@ -81,6 +129,20 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   attachInterrupt(button, button_press, RISING);
 
+  // connect to the server
+  client.connect("KatZapper", mqtt_user, mqtt_password);
+
+  // publish/subscribe
+  if (client.isConnected()) {
+      client.publish("KatZapper/message","MQTT Connected");
+      client.subscribe("KatZapper/set");
+      Particle.publish("MQTT Connection Status", "Connected", PRIVATE);
+  }
+  else {
+      Particle.publish("MQTT Connection Status", "Not Connected", PRIVATE);
+  }
+
+
   panServo.write(panMax);  
   tiltServo.write(tiltMax);            
   delay(750); 
@@ -94,7 +156,11 @@ void setup() {
 
 
 void loop() {
-  while (scanningActive == true) {
+  if (client.isConnected()) {
+    client.loop();
+  }
+
+  if (scanningActive == true) {
     digitalWrite(laserPin, HIGH);
     int cycles = random(5,25);
     int zoneSel = random(first_zone,last_zone);
@@ -105,12 +171,19 @@ void loop() {
       if (millis() > scanEnd || scanningActive == false) {
         scanningActive = false;
         digitalWrite(laserPin, LOW);
+        lastPub = millis() - 60000;
         return;
       }
     }
-    if (millis() - lastPub > 60000) {
+    if (millis() - lastPub > 15000) {
       float timeRemain = (scanEnd - millis()) / (float)60000;
-      Particle.publish("info", String::format("Minutes remaining = %4f", timeRemain));
+      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
+      lastPub += 15000;
+    }
+  }
+  else {
+    if (millis() - lastPub > 60000) {
+      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
       lastPub += 60000;
     }
   }
@@ -233,7 +306,7 @@ int laser(String command) {
 
 void button_press() {
   // debounce button
-  if (millis() - lastPress > 750) {
+  if (millis() - lastPress > 500) {
     lastPress = millis();
     if (scanningActive == true) {
       scanEnd += scanTime;
