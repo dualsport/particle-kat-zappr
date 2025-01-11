@@ -109,6 +109,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     else if (!strcmp(state, "OFF")) {
       client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
       scanningActive = false;
+      digitalWrite(laserPin, LOW);
     }
 }
 
@@ -133,13 +134,20 @@ void setup() {
   client.connect("KatZapper", mqtt_user, mqtt_password);
 
   // publish/subscribe
+  char ipChars[15+1];
+  sprintf(ipChars, "%u.%u.%u.%u", mqtt_server[0], mqtt_server[1], mqtt_server[2], mqtt_server[3]);
+  char message[50];
   if (client.isConnected()) {
       client.publish("KatZapper/message","MQTT Connected");
       client.subscribe("KatZapper/set");
-      Particle.publish("MQTT Connection Status", "Connected", PRIVATE);
+      strcpy(message, "Connected to ");
+      strcat(message, ipChars);
+      Particle.publish("MQTT Connection Status", message, PRIVATE);
   }
   else {
-      Particle.publish("MQTT Connection Status", "Not Connected", PRIVATE);
+      strcpy(message, "Connection FAILED to ");
+      strcat(message, ipChars);
+      Particle.publish("MQTT Connection Status", message, PRIVATE);
   }
 
 
@@ -289,6 +297,7 @@ int activateScan(String command) {
   }
   else {
     scanningActive = false;
+    digitalWrite(laserPin, LOW);
     return 0;
   }
 }
