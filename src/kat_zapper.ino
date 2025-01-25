@@ -62,9 +62,9 @@ int first_zone = 0;
 int last_zone = 23;
 
 bool scanningActive = false;
+char *scanState[] = {"OFF","ON"};
 int scanTime = 5 * 60 * 1000;
-//int scanTime = 100000;
-unsigned long scanEnd;
+unsigned long scanEnd = millis();
 unsigned long lastPress = millis();
 unsigned long lastPub = millis();
 
@@ -103,13 +103,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
         scanEnd = millis() + duration  * 60 * 1000;
         lastPub = millis();
       }
-      float timeRemain = (scanEnd - millis()) / (float)60000;
-      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
+      mqtt_publish_state();
     }
     else if (!strcmp(state, "OFF")) {
-      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
       scanningActive = false;
+      scanEnd = millis();
       digitalWrite(laserPin, LOW);
+      mqtt_publish_state();
     }
 }
 
@@ -164,8 +164,17 @@ void setup() {
 
 
 void loop() {
-  if (client.isConnected()) {
-    client.loop();
+  if (!client.isConnected()) {
+      String message = String::format("Attempting reconnect to server %s", mqtt_server);
+      Particle.publish("MQTT Connection Status", message, PRIVATE);
+      client.connect("KatZapper", mqtt_user, mqtt_password);
+      delay(10000);
+      if (client.isConnected()) {
+        client.publish("KatZapper/message","MQTT Reonnected");
+      }
+  }
+  else {
+      client.loop();
   }
 
   if (scanningActive == true) {
@@ -184,14 +193,13 @@ void loop() {
       }
     }
     if (millis() - lastPub > 15000) {
-      float timeRemain = (scanEnd - millis()) / (float)60000;
-      client.publish("KatZapper/state", String::format("{\"state\":\"ON\",\"time_remain\":%4.1f}", timeRemain));
+      mqtt_publish_state();
       lastPub += 15000;
     }
   }
   else {
     if (millis() - lastPub > 60000) {
-      client.publish("KatZapper/state", "{\"state\":\"OFF\",\"time_remain\":0}");
+      mqtt_publish_state();
       lastPub += 60000;
     }
   }
@@ -293,11 +301,14 @@ int activateScan(String command) {
     scanningActive = true;
     scanEnd = millis() + scanTime;
     lastPub = millis();
+    mqtt_publish_state();
     return 1;
   }
   else {
     scanningActive = false;
+    scanEnd = millis();
     digitalWrite(laserPin, LOW);
+    mqtt_publish_state();
     return 0;
   }
 }
@@ -325,5 +336,22 @@ void button_press() {
       scanEnd = millis() + scanTime;
       lastPub = millis();
     }
+    mqtt_publish_state();
   }
+}
+
+void mqtt_publish_state() {
+  float timeRemain;
+  if (millis() < scanEnd && scanningActive == true) {
+    timeRemain = (scanEnd - millis()) / (float)60000;
+  }
+  else {
+    timeRemain = 0;
+  }
+  client.publish(
+    "KatZapper/state",
+    String::format(
+      "{\"state\":\"%s\",\"time_remain\":%4.1f}", scanState[scanningActive], timeRemain
+    )
+  );
 }
