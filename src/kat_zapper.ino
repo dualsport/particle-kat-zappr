@@ -164,8 +164,17 @@ void setup() {
 
 
 void loop() {
-  if (client.isConnected()) {
-    client.loop();
+  if (!client.isConnected()) {
+      String message = String::format("Attempting reconnect to server %s", mqtt_server);
+      Particle.publish("MQTT Connection Status", message, PRIVATE);
+      client.connect("KatZapper", mqtt_user, mqtt_password);
+      delay(10000);
+      if (client.isConnected()) {
+        client.publish("KatZapper/message","MQTT Reonnected");
+      }
+  }
+  else {
+      client.loop();
   }
 
   if (scanningActive == true) {
