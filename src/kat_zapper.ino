@@ -330,13 +330,13 @@ void button_press() {
     lastPress = millis();
     if (scanningActive == true) {
       scanEnd += scanTime;
+      lastPub = 0;
     }
     else {
       scanningActive = true;
       scanEnd = millis() + scanTime;
-      lastPub = millis();
+      lastPub = 0;
     }
-    mqtt_publish_state();
   }
 }
 
