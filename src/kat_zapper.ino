@@ -178,6 +178,15 @@ void loop() {
   }
 
   if (scanningActive == true) {
+    if (!panServo.attached()) {
+      panServo.attach(panPin);
+      panServo.write(90);  
+    }
+    if (!tiltServo.attached()) {
+      tiltServo.attach(tiltPin);
+      tiltServo.write(90);            
+    
+    }
     digitalWrite(laserPin, HIGH);
     int cycles = random(5,25);
     int zoneSel = random(first_zone,last_zone);
@@ -201,6 +210,10 @@ void loop() {
     if (millis() - lastPub > 60000) {
       mqtt_publish_state();
       lastPub += 60000;
+    }
+    if (panServo.attached() || tiltServo.attached()) {
+      panServo.detach();
+      tiltServo.detach();
     }
   }
 }
