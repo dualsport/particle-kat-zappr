@@ -20,9 +20,12 @@ int pos = 0;    // variable to store the servo position
 int servoDelay = 41;
 
 int panMin = 0;   // minimum pan degrees
-int panMax = 180;  // maximum pan degrees
-int tiltMin = 85;  // minimum tilt degrees
+int panMax = 162;  // maximum pan degrees
+int tiltMin = 100;  // minimum tilt degrees
 int tiltMax = 180; // maximum tilt degrees
+
+int panMidPoint = (panMin + panMax) / 2;
+int tiltMidPoint = (tiltMin + tiltMax) / 2;
 
 // scan zones
 // 24 zones - panleft, panright, tiltbottom, tilttop
@@ -157,8 +160,8 @@ void setup() {
   panServo.write(panMin);  
   tiltServo.write(tiltMin);            
   delay(750); 
-  panServo.write((panMin + panMax) / 2);  
-  tiltServo.write((tiltMin + tiltMax) / 2); 
+  panServo.write(panMidPoint);  
+  tiltServo.write(tiltMidPoint); 
   delay(1000);
 }
 
@@ -180,11 +183,11 @@ void loop() {
   if (scanningActive == true) {
     if (!panServo.attached()) {
       panServo.attach(panPin);
-      panServo.write(90);  
+      panServo.write(panMidPoint);  
     }
     if (!tiltServo.attached()) {
       tiltServo.attach(tiltPin);
-      tiltServo.write(90);            
+      tiltServo.write(tiltMidPoint);            
     
     }
     digitalWrite(laserPin, HIGH);
@@ -220,12 +223,16 @@ void loop() {
 
 int pan(String pan) {
   int panEnd = pan.toInt();
+  panServo.attach(panPin);
+  panServo.write(panMidPoint);
   int tiltEnd = tiltServo.read();
   return linear_interpolate(panEnd, tiltEnd);
 }
 
 int tilt(String tilt) {
   int tiltEnd = tilt.toInt();
+  tiltServo.attach(tiltPin);
+  tiltServo.write(tiltMidPoint);
   int panEnd = panServo.read();
   return linear_interpolate(panEnd, tiltEnd);
 }
@@ -233,6 +240,10 @@ int tilt(String tilt) {
 int panAndTilt(String endpoint){
   int panEnd = endpoint.substring(0, endpoint.indexOf(",")).toInt();
   int tiltEnd = endpoint.substring(endpoint.indexOf(",") + 1).toInt();
+  panServo.attach(panPin);
+  tiltServo.attach(tiltPin);
+  panServo.write(panMidPoint);
+  tiltServo.write(tiltMidPoint);
   return linear_interpolate(panEnd, tiltEnd);
 }
 
