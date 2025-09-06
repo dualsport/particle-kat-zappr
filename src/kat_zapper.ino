@@ -20,8 +20,8 @@ int pos = 0;    // variable to store the servo position
 int servoDelay = 41;
 
 int panMin = 0;   // minimum pan degrees
-int panMax = 162;  // maximum pan degrees
-int tiltMin = 100;  // minimum tilt degrees
+int panMax = 160;  // maximum pan degrees
+int tiltMin = 95;  // minimum tilt degrees
 int tiltMax = 180; // maximum tilt degrees
 
 int panMidPoint = (panMin + panMax) / 2;
@@ -62,7 +62,7 @@ int zones[24][4] =
 
 // Set range of zones to cover (0 to 23)
 int first_zone = 0;
-int last_zone = 23;
+int last_zone = 15;
 
 bool scanningActive = false;
 char *scanState[] = {"OFF","ON"};
