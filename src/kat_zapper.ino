@@ -79,6 +79,9 @@ const char mqtt_user[] = "mqtt_user";
 const char mqtt_password[] = "iaea123:)";
 MQTT client(mqtt_server, 1883, 256, 120, callback);
 
+// MQTT reconnect attempts
+unsigned long last_reconnect_attempt = 0;
+const unsigned long reconnect_interval = 10000; // attempt reconnect every 10 seconds
 
 // recieve message
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -168,17 +171,21 @@ void setup() {
 
 void loop() {
   if (!client.isConnected()) {
-      String message = String::format("Attempting reconnect to server %s", mqtt_server);
-      Particle.publish("MQTT Connection Status", message, PRIVATE);
-      client.connect("KatZapper", mqtt_user, mqtt_password);
-      delay(10000);
-      if (client.isConnected()) {
-        client.publish("KatZapper/message","MQTT Reonnected");
+      unsigned long now = millis();
+      if (now - last_reconnect_attempt > reconnect_interval) {
+          last_reconnect_attempt = now;
+        String message = String::format("Attempting reconnect to server %s", mqtt_server);
+        Particle.publish("MQTT Connection Status", message, PRIVATE);
+        // Attempt connection
+        client.connect("KatZapper", mqtt_user, mqtt_password);
+        if (client.isConnected()) {
+          String message = String::format("Successfully reconnected to server %s", mqtt_server);
+          Particle.publish("MQTT Connection Status", message, PRIVATE);
+        }
       }
   }
-  else {
-      client.loop();
-  }
+      
+  client.loop();
 
   if (scanningActive == true) {
     if (!panServo.attached()) {
