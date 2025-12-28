@@ -87,14 +87,15 @@ const unsigned long reconnect_interval = 10000; // attempt reconnect every 10 se
 void callback(char* topic, byte* payload, unsigned int length) {
     char p[length + 1];
     memcpy(p, payload, length);
-    p[length] = NULL;
+    p[length] = '\0';
 
-    // client.publish("KatZapper/message", p);
-
-    JsonDocument doc;
-    deserializeJson(doc, p);
-    const char* state = doc["state"];
-    int duration = doc["duration"];
+    DynamicJsonDocument doc(256);
+    DeserializationError err = deserializeJson(doc, p);
+    if (err) {
+      return;
+    }
+    const char* state = doc["state"] | "";
+    int duration = doc["duration"] | 0;
     // char durationStr[16];
     // sprintf(durationStr, "%.d", duration);
     // client.publish("KatZapper/message", state);
@@ -174,13 +175,16 @@ void loop() {
       unsigned long now = millis();
       if (now - last_reconnect_attempt > reconnect_interval) {
           last_reconnect_attempt = now;
-        String message = String::format("Attempting reconnect to server %s", mqtt_server);
+        char ipChars[16];
+        sprintf(ipChars, "%u.%u.%u.%u", mqtt_server[0], mqtt_server[1], mqtt_server[2], mqtt_server[3]);
+        String message = String::format("Attempting reconnect to server %s", ipChars);
         Particle.publish("MQTT Connection Status", message, PRIVATE);
         // Attempt connection
-        client.connect("KatZapper", mqtt_user, mqtt_password);
-        if (client.isConnected()) {
-          String message = String::format("Successfully reconnected to server %s", mqtt_server);
+        if (client.connect("KatZapper", mqtt_user, mqtt_password)) {
+          String message = String::format("Successfully reconnected to server %s", ipChars);
           Particle.publish("MQTT Connection Status", message, PRIVATE);
+          client.publish("KatZapper/message","MQTT Connected");
+          client.subscribe("KatZapper/set");
         }
       }
   }
