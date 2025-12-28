@@ -8,6 +8,11 @@
  * Date:
  */
 
+ // Strip path from filename
+ #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+ // Create variable to hold device info
+char gDeviceInfo[120]; // Adjust size as required
+
 int panPin = D2;
 int tiltPin = D3;
 int laserPin = D1;
@@ -122,6 +127,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 
 void setup() {
+  Particle.variable("deviceInfo", gDeviceInfo);
+  snprintf(gDeviceInfo, sizeof(gDeviceInfo), "App: %s, Date: %s, Time: %s, Sysver: %s",
+             __FILENAME__,
+             __DATE__, // ANSI C predefined macro for compilation date
+             __TIME__, // ANSI C predefined macro for compilation time
+             (const char*)System.version() // Cast required for String type
+    );
+
   Particle.function("ActivateLaserScan", activateScan);
   Particle.function("pan", pan);
   Particle.function("tilt", tilt);
