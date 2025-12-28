@@ -128,7 +128,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void setup() {
   Particle.variable("deviceInfo", gDeviceInfo);
-  snprintf(gDeviceInfo, sizeof(gDeviceInfo), "App: %s, Date: %s, Time: %s, Sysver: %s",
+  snprintf(gDeviceInfo, sizeof(gDeviceInfo), "App: %s, Date: %s, Time: %sZ, Sysver: %s",
              __FILENAME__,
              __DATE__, // ANSI C predefined macro for compilation date
              __TIME__, // ANSI C predefined macro for compilation time
