@@ -25,7 +25,7 @@ int pos = 0;    // variable to store the servo position
 int servoDelay = 41;
 
 int panMin = 0;   // minimum pan degrees
-int panMax = 160;  // maximum pan degrees
+int panMax = 140;  // maximum pan degrees
 int tiltMin = 95;  // minimum tilt degrees
 int tiltMax = 180; // maximum tilt degrees
 
