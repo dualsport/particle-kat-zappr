@@ -358,11 +358,17 @@ void runRareSequencePattern(int zoneSel, int pattern) {
 
   switch (pattern) {
     case 1: { // Wide sweep across pan with gentle tilt variation
-      servoDelay = max(3, oldDelay / 2);
-      for (int p = panMin; p <= panMax; p += 5) {
-        int t = tiltMidPoint + (((p - panMin) * 20) / max(1, (panMax - panMin))) - 10;
-        linear_interpolate(p, t);
-        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
+      servoDelay = random(5, 17);
+      // starting pan, random 10 degrees left or right of pan panmax minus panmin
+      int panEnd = random(panMidPoint - 10, panMidPoint + 11);
+      int tiltEnd = random(tiltMidPoint - 10, tiltMidPoint + 11);
+      linear_interpolate(panEnd, tiltEnd);
+      int n = random(4,13);
+      for (int k = 0; k < n; k++) {
+        delay(random(500, 2500));
+        panEnd = random(panEnd - 5, panEnd + 6);
+        tiltEnd = random(tiltEnd - 5, tiltEnd + 6);
+        linear_interpolate(panEnd, tiltEnd);
       }
       break;
     }
