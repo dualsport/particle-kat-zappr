@@ -349,6 +349,7 @@ void runRareSequence(int zoneSel) {
 }
 
 void runRareSequencePattern(int zoneSel, int pattern) {
+  Particle.publish("RareSequence", String::format("Executing rare sequence pattern %d in zone %d", pattern, zoneSel));
   // Ensure servos are attached and centred
   if (!panServo.attached()) { panServo.attach(panPin); panServo.write(panMidPoint); }
   if (!tiltServo.attached()) { tiltServo.attach(tiltPin); tiltServo.write(tiltMidPoint); }
@@ -367,7 +368,7 @@ void runRareSequencePattern(int zoneSel, int pattern) {
     }
     case 2: { // Rapid darts within the selected zone
       servoDelay = max(3, oldDelay / 3);
-      int n = random(3,7);
+      int n = random(8,17);
       for (int k = 0; k < n; k++) {
         int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
         int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
@@ -379,7 +380,7 @@ void runRareSequencePattern(int zoneSel, int pattern) {
     case 3: { // Center-focus burst: go to center then small oscillations
       servoDelay = max(3, oldDelay / 2);
       linear_interpolate(panMidPoint, tiltMidPoint);
-      for (int k = 0; k < 6; k++) {
+      for (int k = 0; k < 10; k++) {
         int dx = (k % 2 == 0) ? 5 : -5;
         int dy = (k % 2 == 0) ? 5 : -5;
         linear_interpolate(panMidPoint + dx, tiltMidPoint + dy);
