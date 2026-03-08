@@ -345,10 +345,10 @@ void runRareSequence(int zoneSel) {
   if (!tiltServo.attached()) { tiltServo.attach(tiltPin); tiltServo.write(tiltMidPoint); }
 
   int oldDelay = servoDelay;
-  int pattern = random(0,3); // 0=wide sweep, 1=rapid darts, 2=center burst
+  int pattern = random(1,4); // 1=wide sweep, 2=rapid darts, 3=center burst
 
   switch (pattern) {
-    case 0: { // Wide sweep across pan with gentle tilt variation
+    case 1: { // Wide sweep across pan with gentle tilt variation
       servoDelay = max(3, oldDelay / 2);
       for (int p = panMin; p <= panMax; p += 5) {
         int t = tiltMidPoint + (((p - panMin) * 20) / max(1, (panMax - panMin))) - 10;
@@ -357,7 +357,7 @@ void runRareSequence(int zoneSel) {
       }
       break;
     }
-    case 1: { // Rapid darts within the selected zone
+    case 2: { // Rapid darts within the selected zone
       servoDelay = max(3, oldDelay / 3);
       int n = random(3,7);
       for (int k = 0; k < n; k++) {
@@ -368,7 +368,7 @@ void runRareSequence(int zoneSel) {
       }
       break;
     }
-    case 2: { // Center-focus burst: go to center then small oscillations
+    case 3: { // Center-focus burst: go to center then small oscillations
       servoDelay = max(3, oldDelay / 2);
       linear_interpolate(panMidPoint, tiltMidPoint);
       for (int k = 0; k < 6; k++) {
