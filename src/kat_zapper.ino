@@ -78,6 +78,8 @@ unsigned long lastPub = millis();
 
 void callback(char* topic, byte* payload, unsigned int length);
 void runRareSequence(int zoneSel);
+void runRareSequencePattern(int zoneSel, int pattern);
+int ExecuteRareSequence(String command);
 
 // MQTT Setup
 const uint8_t mqtt_server[] = { 192,168,88,11};
@@ -142,6 +144,7 @@ void setup() {
   Particle.function("PanAndTilt", panAndTilt);
   Particle.function("speed", setSpeed);
   Particle.function("Laser", laser);
+  Particle.function("ExecuteRareSequence", ExecuteRareSequence);
 
   panServo.attach(panPin);
   tiltServo.attach(tiltPin);
@@ -340,12 +343,17 @@ int linear_interpolate(int panEnd, int tiltEnd) {
 }
 
 void runRareSequence(int zoneSel) {
+  // Default behaviour: pick a random pattern
+  int pattern = random(1,4); // 1..3
+  runRareSequencePattern(zoneSel, pattern);
+}
+
+void runRareSequencePattern(int zoneSel, int pattern) {
   // Ensure servos are attached and centred
   if (!panServo.attached()) { panServo.attach(panPin); panServo.write(panMidPoint); }
   if (!tiltServo.attached()) { tiltServo.attach(tiltPin); tiltServo.write(tiltMidPoint); }
 
   int oldDelay = servoDelay;
-  int pattern = random(1,4); // 1=wide sweep, 2=rapid darts, 3=center burst
 
   switch (pattern) {
     case 1: { // Wide sweep across pan with gentle tilt variation
@@ -377,6 +385,10 @@ void runRareSequence(int zoneSel) {
         linear_interpolate(panMidPoint + dx, tiltMidPoint + dy);
         if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
       }
+      break;
+    }
+    default: {
+      // Unknown pattern, do nothing
       break;
     }
   }
@@ -455,4 +467,14 @@ void mqtt_publish_state() {
       "{\"state\":\"%s\",\"time_remain\":%4.1f}", scanState[scanningActive], timeRemain
     )
   );
+}
+
+int ExecuteRareSequence(String command) {
+  int pat = command.toInt();
+  if (pat < 1 || pat > 3) {
+    return 0; // invalid pattern
+  }
+  int zoneSel = random(first_zone, last_zone);
+  runRareSequencePattern(zoneSel, pat);
+  return 1;
 }
