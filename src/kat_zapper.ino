@@ -77,6 +77,7 @@ unsigned long lastPress = millis();
 unsigned long lastPub = millis();
 
 void callback(char* topic, byte* payload, unsigned int length);
+void runRareSequence(int zoneSel);
 
 // MQTT Setup
 const uint8_t mqtt_server[] = { 192,168,88,11};
@@ -217,15 +218,21 @@ void loop() {
     digitalWrite(laserPin, HIGH);
     int cycles = random(5,25);
     int zoneSel = random(first_zone,last_zone);
-    for (int i=0;i<cycles;i++) {
-      int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
-      int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
-      linear_interpolate(panEnd, tiltEnd);
-      if (millis() > scanEnd || scanningActive == false) {
-        scanningActive = false;
-        digitalWrite(laserPin, LOW);
-        lastPub = millis() - 60000;
-        return;
+    // 1-in-25 chance to run a rare movement sequence
+    if (random(1,26) == 1) {
+      runRareSequence(zoneSel);
+    }
+    else {
+      for (int i=0;i<cycles;i++) {
+        int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
+        int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
+        linear_interpolate(panEnd, tiltEnd);
+        if (millis() > scanEnd || scanningActive == false) {
+          scanningActive = false;
+          digitalWrite(laserPin, LOW);
+          lastPub = millis() - 60000;
+          return;
+        }
       }
     }
     if (millis() - lastPub > 15000) {
@@ -330,6 +337,52 @@ int linear_interpolate(int panEnd, int tiltEnd) {
   }
   // Particle.publish("info", String::format("panStart=%d, panEnd=%d, tiltStart=%d, tiltEnd=%d, ptRatio=%4f", panStart, panEnd, tiltStart, tiltEnd, ptRatio));
   return 1;
+}
+
+void runRareSequence(int zoneSel) {
+  // Ensure servos are attached and centred
+  if (!panServo.attached()) { panServo.attach(panPin); panServo.write(panMidPoint); }
+  if (!tiltServo.attached()) { tiltServo.attach(tiltPin); tiltServo.write(tiltMidPoint); }
+
+  int oldDelay = servoDelay;
+  int pattern = random(0,3); // 0=wide sweep, 1=rapid darts, 2=center burst
+
+  switch (pattern) {
+    case 0: { // Wide sweep across pan with gentle tilt variation
+      servoDelay = max(3, oldDelay / 2);
+      for (int p = panMin; p <= panMax; p += 5) {
+        int t = tiltMidPoint + (((p - panMin) * 20) / max(1, (panMax - panMin))) - 10;
+        linear_interpolate(p, t);
+        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
+      }
+      break;
+    }
+    case 1: { // Rapid darts within the selected zone
+      servoDelay = max(3, oldDelay / 3);
+      int n = random(3,7);
+      for (int k = 0; k < n; k++) {
+        int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
+        int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
+        linear_interpolate(panEnd, tiltEnd);
+        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
+      }
+      break;
+    }
+    case 2: { // Center-focus burst: go to center then small oscillations
+      servoDelay = max(3, oldDelay / 2);
+      linear_interpolate(panMidPoint, tiltMidPoint);
+      for (int k = 0; k < 6; k++) {
+        int dx = (k % 2 == 0) ? 5 : -5;
+        int dy = (k % 2 == 0) ? 5 : -5;
+        linear_interpolate(panMidPoint + dx, tiltMidPoint + dy);
+        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
+      }
+      break;
+    }
+  }
+
+  // Restore delay
+  servoDelay = oldDelay;
 }
 
 int setSpeed(String speed) {
