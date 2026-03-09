@@ -24,50 +24,19 @@ Servo tiltServo;
 int pos = 0;    // variable to store the servo position
 int servoDelay = 41;
 
-int panMin = 0;   // minimum pan degrees
-int panMax = 140;  // maximum pan degrees
-int tiltMin = 95;  // minimum tilt degrees
-int tiltMax = 180; // maximum tilt degrees
+int panMin = 45;   // minimum pan degrees
+int panMax = 125;  // maximum pan degrees
+int tiltMin = 125;  // minimum tilt degrees
+int tiltMax = 155; // maximum tilt degrees
 
 int panMidPoint = (panMin + panMax) / 2;
 int tiltMidPoint = (tiltMin + tiltMax) / 2;
 
-// scan zones
-// 24 zones - panleft, panright, tiltbottom, tilttop
-int zones[24][4] =
-    {
-        // near tilt
-        {140, 124, 165, 145},
-        {124, 108, 165, 145},
-        {107, 91, 165, 145},
-        {91, 75, 165, 145},
-        {75, 59, 165, 145},
-        {59, 43, 165, 145},
-        {42, 26, 165, 145},
-        {26, 10, 165, 145},
-        // middle tilt
-        {140, 124, 150, 128},
-        {124, 108, 150, 128},
-        {107, 91, 150, 128},
-        {91, 75, 150, 128},
-        {75, 59, 150, 128},
-        {59, 43, 150, 128},
-        {42, 26, 150, 128},
-        {26, 10, 150, 128},
-        // far tilt
-        // {160, 145, 125, 110},
-        // {145, 130, 125, 110},
-        // {130, 115, 125, 110},
-        // {115, 100, 125, 110},
-        // {100, 85, 125, 110},
-        // {85, 70, 125, 110},
-        // {70, 55, 125, 110},
-        // {55, 40, 125, 110},
-};
+// scan zones: populated at setup time
+// zones - {panUpper, panLower, tiltUpper, tiltLower}
+int zones[8][4];
 
-// Set range of zones to cover (0 to 23)
-int first_zone = 0;
-int last_zone = 15;
+int numZones = sizeof(zones) / sizeof(zones[0]);
 
 bool scanningActive = false;
 char *scanState[] = {"OFF","ON"};
@@ -146,6 +115,29 @@ void setup() {
   Particle.function("Laser", laser);
   Particle.function("ExecuteRareSequence", ExecuteRareSequence);
 
+  // Initialize scan zones: split tilt into 2 halves and pan into 4 quarters
+  {
+    int panRange = panMax - panMin;
+    int tiltRange = tiltMax - tiltMin;
+    int panStep = panRange / 4;   // each pan zone covers 1/4 of range
+    int tiltStep = tiltRange / 2; // each tilt zone covers 1/2 of range
+    int idx = 0;
+    for (int t = 0; t < 2; t++) {
+      int t_low = tiltMin + t * tiltStep;
+      int t_high = (t == 1) ? tiltMax : (tiltMin + (t + 1) * tiltStep);
+      for (int p = 0; p < 4; p++) {
+        int p_low = panMin + p * panStep;
+        int p_high = (p == 3) ? panMax : (panMin + (p + 1) * panStep);
+        // Store as {panUpper, panLower, tiltUpper, tiltLower}
+        zones[idx][0] = p_high;
+        zones[idx][1] = p_low;
+        zones[idx][2] = t_high;
+        zones[idx][3] = t_low;
+        idx++;
+      }
+    }
+  }
+
   panServo.attach(panPin);
   tiltServo.attach(tiltPin);
   pinMode(laserPin, OUTPUT);
@@ -220,7 +212,7 @@ void loop() {
     }
     digitalWrite(laserPin, HIGH);
     int cycles = random(5,25);
-    int zoneSel = random(first_zone,last_zone);
+    int zoneSel = random(numZones);
     // 1-in-25 chance to run a rare movement sequence
     if (random(1,26) == 1) {
       runRareSequence(zoneSel);
@@ -481,7 +473,7 @@ int ExecuteRareSequence(String command) {
   if (pat < 1 || pat > 3) {
     return 0; // invalid pattern
   }
-  int zoneSel = random(first_zone, last_zone);
+  int zoneSel = random(numZones);
   runRareSequencePattern(zoneSel, pat);
   return 1;
 }
