@@ -1,5 +1,8 @@
 #include <MQTT.h>
 #include <ArduinoJson.h>
+#include <cmath>
+
+#define PI 3.141592653589793
 
 /*
  * Project kat_zapper
@@ -26,8 +29,10 @@ int servoDelay = 41;
 
 int panMin = 45;   // minimum pan degrees
 int panMax = 125;  // maximum pan degrees
+int panZones = 4;   // number of pan zones (divides pan range into equal zones)
 int tiltMin = 125;  // minimum tilt degrees
 int tiltMax = 155; // maximum tilt degrees
+int tiltZones = 2;  // number of tilt zones (divides tilt range into equal zones)
 
 int panMidPoint = (panMin + panMax) / 2;
 int tiltMidPoint = (tiltMin + tiltMax) / 2;
@@ -114,20 +119,21 @@ void setup() {
   Particle.function("speed", setSpeed);
   Particle.function("Laser", laser);
   Particle.function("ExecuteRareSequence", ExecuteRareSequence);
+  Particle.function("CircularInterpolate", CircularInterpolate);
 
   // Initialize scan zones: split tilt into 2 halves and pan into 4 quarters
   {
     int panRange = panMax - panMin;
     int tiltRange = tiltMax - tiltMin;
-    int panStep = panRange / 4;   // each pan zone covers 1/4 of range
-    int tiltStep = tiltRange / 2; // each tilt zone covers 1/2 of range
+    int panStep = panRange / panZones;   // each pan zone covers 1/4 of range
+    int tiltStep = tiltRange / tiltZones; // each tilt zone covers 1/2 of range
     int idx = 0;
-    for (int t = 0; t < 2; t++) {
+    for (int t = 0; t < tiltZones; t++) {
       int t_low = tiltMin + t * tiltStep;
-      int t_high = (t == 1) ? tiltMax : (tiltMin + (t + 1) * tiltStep);
-      for (int p = 0; p < 4; p++) {
+      int t_high = (t == tiltZones - 1) ? tiltMax : (tiltMin + (t + 1) * tiltStep);
+      for (int p = 0; p < panZones; p++) {
         int p_low = panMin + p * panStep;
-        int p_high = (p == 3) ? panMax : (panMin + (p + 1) * panStep);
+        int p_high = (p == panZones - 1) ? panMax : (panMin + (p + 1) * panStep);
         // Store as {panUpper, panLower, tiltUpper, tiltLower}
         zones[idx][0] = p_high;
         zones[idx][1] = p_low;
@@ -334,9 +340,34 @@ int linear_interpolate(int panEnd, int tiltEnd) {
   return 1;
 }
 
+int circular_interpolate(int center_pan, int center_tilt, int radius_pan, int radius_tilt, int start_degrees, float num_circles) {
+  if (num_circles <= 0) {
+    return 0;
+  }
+  if (!panServo.attached()) {
+    panServo.attach(panPin);
+    panServo.write(panMidPoint);
+  }
+  if (!tiltServo.attached()) {
+    tiltServo.attach(tiltPin);
+    tiltServo.write(tiltMidPoint);
+  }
+  for (int angle = start_degrees; angle < start_degrees + num_circles * 360.0; angle += 5.0) {
+    float rad = angle % 360 * (PI / 180);
+    int pan_pos = center_pan + radius_pan * cos(rad);
+    int tilt_pos = center_tilt + radius_tilt * sin(rad);
+    pan_pos = max(panMin, min(panMax, pan_pos));
+    tilt_pos = max(tiltMin, min(tiltMax, tilt_pos));
+    panServo.write(pan_pos);
+    tiltServo.write(tilt_pos);
+    delay(servoDelay);
+  }
+  return 1;
+}
+
 void runRareSequence(int zoneSel) {
   // Default behaviour: pick a random pattern
-  int pattern = random(1,4); // 1..3
+  int pattern = random(1,5); // 1..4
   runRareSequencePattern(zoneSel, pattern);
 }
 
@@ -350,7 +381,7 @@ void runRareSequencePattern(int zoneSel, int pattern) {
 
   switch (pattern) {
     case 1: { // Wide sweep across pan with gentle tilt variation
-      servoDelay = random(5, 17);
+      servoDelay = max(3, oldDelay / 2);
       // starting pan, random 10 degrees left or right of pan panmax minus panmin
       int panEnd = random(panMidPoint - 10, panMidPoint + 11);
       int tiltEnd = random(tiltMidPoint - 10, tiltMidPoint + 11);
@@ -365,7 +396,7 @@ void runRareSequencePattern(int zoneSel, int pattern) {
       break;
     }
     case 2: { // Rapid darts within the selected zone
-      servoDelay = max(3, oldDelay / 3);
+      servoDelay = max(3, oldDelay / 2);
       int n = random(8,17);
       for (int k = 0; k < n; k++) {
         int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
@@ -386,12 +417,22 @@ void runRareSequencePattern(int zoneSel, int pattern) {
       }
       break;
     }
+    case 4: { // Random circular pattern within the zone
+      int center_pan = (zones[zoneSel][0] + zones[zoneSel][1]) / 2;
+      int center_tilt = tiltMidPoint; // keep tilt centered for circular pattern
+      int numCircles = random(2,5);
+      int max_radius = ((zones[zoneSel][0] - zones[zoneSel][1]) / 2); // max radius to stay within pan limits of zone
+      int radius = random(5, max_radius + 1);
+      int start_degrees = random(0, 360 + 1);
+      servoDelay = max(3, oldDelay * .75);
+      circular_interpolate(center_pan, center_tilt, radius, radius, start_degrees, numCircles);
+      break;
+    }
     default: {
       // Unknown pattern, do nothing
       break;
     }
   }
-
   // Restore delay
   servoDelay = oldDelay;
 }
@@ -470,10 +511,38 @@ void mqtt_publish_state() {
 
 int ExecuteRareSequence(String command) {
   int pat = command.toInt();
-  if (pat < 1 || pat > 3) {
+  if (pat < 1 || pat > 4) {
     return 0; // invalid pattern
   }
   int zoneSel = random(numZones);
   runRareSequencePattern(zoneSel, pat);
   return 1;
+}
+
+int CircularInterpolate(String args) {
+  // parse args: center_pan,center_tilt,radius_pan,radius_tilt,start_degrees,num_circles
+  int comma1 = args.indexOf(',');
+  if (comma1 == -1) return 0;
+  int center_pan = args.substring(0, comma1).toInt();
+  args = args.substring(comma1 + 1);
+  int comma2 = args.indexOf(',');
+  if (comma2 == -1) return 0;
+  int center_tilt = args.substring(0, comma2).toInt();
+  args = args.substring(comma2 + 1);
+  int comma3 = args.indexOf(',');
+  if (comma3 == -1) return 0;
+  int radius_pan = args.substring(0, comma3).toInt();
+  args = args.substring(comma3 + 1);
+  int comma4 = args.indexOf(',');
+  if (comma4 == -1) return 0;
+  int radius_tilt = args.substring(0, comma4).toInt();
+  args = args.substring(comma4 + 1);
+  int comma5 = args.indexOf(',');
+  if (comma5 == -1) return 0;
+  int start_degrees = args.substring(0, comma5).toInt();
+  args = args.substring(comma5 + 1);
+  int comma6 = args.indexOf(',');
+  if (comma6 == -1) return 0;
+  float num_circles = args.substring(0, comma6).toFloat();
+  return circular_interpolate(center_pan, center_tilt, radius_pan, radius_tilt, start_degrees, num_circles);
 }
