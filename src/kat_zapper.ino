@@ -5,13 +5,6 @@
 
 #define PI 3.141592653589793
 
-/*
- * Project kat_zapper
- * Description:
- * Author:
- * Date:
- */
-
  // Strip path from filename
  #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
  // Create variable to hold device info
@@ -79,10 +72,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
     const char* state = doc["state"] | "";
     int duration = doc["duration"] | 0;
-    // char durationStr[16];
-    // sprintf(durationStr, "%.d", duration);
-    // client.publish("KatZapper/message", state);
-    // client.publish("KatZapper/message", durationStr);
 
     if (!strcmp(state, "ON") && duration > 0) {
       if (scanningActive == true) {
@@ -171,7 +160,6 @@ void setup() {
       strcat(message, ipChars);
       Particle.publish("MQTT Connection Status", message, PRIVATE);
   }
-
 
   panServo.write(panMax);  
   tiltServo.write(tiltMax);            
@@ -336,7 +324,6 @@ int linear_interpolate(int panEnd, int tiltEnd) {
       }
     }
   }
-  // Particle.publish("info", String::format("panStart=%d, panEnd=%d, tiltStart=%d, tiltEnd=%d, ptRatio=%4f", panStart, panEnd, tiltStart, tiltEnd, ptRatio));
   return 1;
 }
 
@@ -380,7 +367,7 @@ void runRareSequencePattern(int zoneSel, int pattern) {
   int oldDelay = servoDelay;
 
   switch (pattern) {
-    case 1: { // Wide sweep across pan with gentle tilt variation
+    case 1: { // short moves with pauses
       servoDelay = max(3, oldDelay / 2);
       // starting pan, random 10 degrees left or right of pan panmax minus panmin
       int panEnd = random(panMidPoint - 10, panMidPoint + 11);
@@ -402,7 +389,6 @@ void runRareSequencePattern(int zoneSel, int pattern) {
         int panEnd = random(zones[zoneSel][1], zones[zoneSel][0]);
         int tiltEnd = random(zones[zoneSel][3], zones[zoneSel][2]);
         linear_interpolate(panEnd, tiltEnd);
-        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
       }
       break;
     }
@@ -413,7 +399,6 @@ void runRareSequencePattern(int zoneSel, int pattern) {
         int dx = (k % 2 == 0) ? 5 : -5;
         int dy = (k % 2 == 0) ? 5 : -5;
         linear_interpolate(panMidPoint + dx, tiltMidPoint + dy);
-        if (millis() > scanEnd || scanningActive == false) { servoDelay = oldDelay; return; }
       }
       break;
     }
