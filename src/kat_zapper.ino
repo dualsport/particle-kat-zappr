@@ -1,6 +1,7 @@
 #include <MQTT.h>
 #include <ArduinoJson.h>
 #include <cmath>
+#include <vector>
 
 #define PI 3.141592653589793
 
@@ -39,9 +40,9 @@ int tiltMidPoint = (tiltMin + tiltMax) / 2;
 
 // scan zones: populated at setup time
 // zones - {panUpper, panLower, tiltUpper, tiltLower}
-int zones[8][4];
+std::vector<std::vector<int>> zones(panZones * tiltZones, std::vector<int>(4));
 
-int numZones = sizeof(zones) / sizeof(zones[0]);
+int numZones = zones.size();
 
 bool scanningActive = false;
 char *scanState[] = {"OFF","ON"};
