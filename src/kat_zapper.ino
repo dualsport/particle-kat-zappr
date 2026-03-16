@@ -120,7 +120,6 @@ void setup() {
   Particle.function("speed", setSpeed);
   Particle.function("Laser", laser);
   Particle.function("ExecuteRareSequence", ExecuteRareSequence);
-  Particle.function("CircularInterpolate", CircularInterpolate);
 
   // Initialize scan zones: split tilt into 2 halves and pan into 4 quarters
   {
@@ -518,32 +517,4 @@ int ExecuteRareSequence(String command) {
   int zoneSel = random(numZones);
   runRareSequencePattern(zoneSel, pat);
   return 1;
-}
-
-int CircularInterpolate(String args) {
-  // parse args: center_pan,center_tilt,radius_pan,radius_tilt,start_degrees,num_circles
-  int comma1 = args.indexOf(',');
-  if (comma1 == -1) return 0;
-  int center_pan = args.substring(0, comma1).toInt();
-  args = args.substring(comma1 + 1);
-  int comma2 = args.indexOf(',');
-  if (comma2 == -1) return 0;
-  int center_tilt = args.substring(0, comma2).toInt();
-  args = args.substring(comma2 + 1);
-  int comma3 = args.indexOf(',');
-  if (comma3 == -1) return 0;
-  int radius_pan = args.substring(0, comma3).toInt();
-  args = args.substring(comma3 + 1);
-  int comma4 = args.indexOf(',');
-  if (comma4 == -1) return 0;
-  int radius_tilt = args.substring(0, comma4).toInt();
-  args = args.substring(comma4 + 1);
-  int comma5 = args.indexOf(',');
-  if (comma5 == -1) return 0;
-  int start_degrees = args.substring(0, comma5).toInt();
-  args = args.substring(comma5 + 1);
-  int comma6 = args.indexOf(',');
-  if (comma6 == -1) return 0;
-  float num_circles = args.substring(0, comma6).toFloat();
-  return circular_interpolate(center_pan, center_tilt, radius_pan, radius_tilt, start_degrees, num_circles);
 }
